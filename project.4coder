@@ -1,0 +1,48 @@
+version(2);
+project_name = "GMTK Game Jam 2023";
+patterns = {
+"*.c",
+"*.cpp",
+"*.sq",
+"*.h",
+"*.m",
+"*.bat",
+"*.sh",
+"*.4coder",
+};
+blacklist_patterns = {
+".*",
+};
+load_paths_base = {
+ { ".", .relative = true, .recursive = true, },
+};
+load_paths = {
+ .win = load_paths_base,
+ .linux = load_paths_base,
+ .mac = load_paths_base,
+};
+
+commands = {
+ .build = { .out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+   .win = "build_windows.bat",
+   .linux = "./build.sh",
+   .mac = "./build.sh", },
+ .run = { .out = "*run*", .footer_panel = false, .save_dirty_files = false,
+   .win = "cd run_tree && simple.exe",
+   .linux = "cd run_tree && ./main",
+   .mac = "cd run_tree && ./main", },
+ .build_wasm = { .out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+   .win = "build_wasm.bat",
+   .linux = "./build.sh",
+   .mac = "./build.sh", },
+ .build_wasm_release = { .out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+   .win = "build_wasm.bat release",
+   .linux = "./build.sh",
+   .mac = "./build.sh", },
+};
+fkey_command = {
+.F1 = "build",
+.F2 = "run",
+.F3 = "build_wasm",
+.F4 = "build_wasm_release",
+};

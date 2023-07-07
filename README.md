@@ -1,2 +1,2 @@
-# GMTK-Game-Jam-2023
-My entry for the GMTK Game Jam 2023
+# ldjam53
+Ludum Dare 53 (This is just a practice jam outside of the jam event period)
