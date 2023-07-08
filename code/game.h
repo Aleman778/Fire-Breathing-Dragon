@@ -106,6 +106,7 @@ enum Entity_Type {
     Box_Collider,
     Boss_Dragon,
     Bullet,
+    Charged_Bullet,
 };
 
 enum Game_Mode {
@@ -148,6 +149,8 @@ struct Entity {
     s32 health;
     s32 max_health;
     
+    s32 invincibility_frames;
+    
     bool is_grounded;
     bool is_jumping;
     bool is_attacking;
@@ -165,7 +168,8 @@ struct Particle {
 };
 
 struct Particle_System {
-    Particle particles[500];
+    Particle* particles;
+    int max_particle_count;
     int particle_count;
     
     v2 start_p;
@@ -188,6 +192,7 @@ struct Game_State {
     Entity* player;
     Entity* boss_enemy;
     Entity* bullets[5];
+    Entity* charged_bullet;
     
     Entity* entities;
     int entity_count;
@@ -208,10 +213,12 @@ struct Game_State {
     v2 camera_p;
     
     Particle_System* ps_fire;
+    Particle_System* ps_charging;
     
     Texture2D texture_tiles;
     Texture2D texture_background;
     Texture2D texture_player;
     Texture2D texture_dragon;
     Texture2D texture_bullet;
+    Texture2D texture_charged_bullet;
 };

@@ -5,6 +5,8 @@
 
 #define BACKGROUND_COLOR rgb(52, 28, 39)
 
+#define min(a, b) ((a) < (b) ? (a) : (b))
+#define max(a, b) ((a) > (b) ? (a) : (b))
 #define sign(value) ((value) < 0 ? -1 : ((value) > 0 ? 1 : 0 ))
 
 bool
@@ -140,6 +142,12 @@ init_level(Game_State* state, Memory_Arena* arena) {
         bullet->is_rigidbody = true;
     }
     
+    Entity* bullet = spawn_entity(state, arena, Charged_Bullet);
+    state->charged_bullet = bullet;
+    bullet->texture = &state->texture_charged_bullet;
+    bullet->max_speed.x = 3.0f;
+    bullet->size = { 0.75f, 0.75f };
+    bullet->is_rigidbody = true;
     
     return player;
 }
@@ -225,16 +233,10 @@ draw_health_bar(Game_State* game_state, Entity* entity, Color color, bool right=
 }
 
 Particle_System*
-init_particle_system() {
+init_particle_system(int max_particle_count) {
     Particle_System* ps = (Particle_System*) calloc(1, sizeof(Particle_System));
-    ps->start_p = vec2(5.0f, 5.0f);
-    ps->min_angle = PI_F32/4.0f + 0.3f; ps->max_angle = PI_F32/4.0f - 0.3f;
-    ps->speed = 0.1f;
-    ps->min_scale = 0.1f; ps->max_scale = 0.1f;
-    
-    ps->spawn_rate = 0.6f;
-    ps->delta_t = 0.015f;
-    
+    ps->particles = (Particle*) malloc(max_particle_count * sizeof(Particle));
+    ps->max_particle_count = max_particle_count;
     return ps;
 }
 
@@ -256,7 +258,7 @@ update_particle_system(Particle_System* ps, bool spawn_new) {
     if (spawn_new) {
         // Spawn new particles
         for (int i = 0; i < 10; i++) {
-            if (ps->particle_count < array_count(ps->particles) && random_f32() < ps->spawn_rate) {
+            if (ps->particle_count < ps->max_particle_count && random_f32() < ps->spawn_rate) {
                 Particle* p = &ps->particles[ps->particle_count];
                 ps->particle_count++;
                 p->p = ps->start_p;
@@ -311,6 +313,21 @@ check_collisions(Game_State* state, Entity* entity, v2* step_velocity) {
 }
 
 
+void
+shoot_bullet(Entity* entity, Entity* bullet, bool upward) {
+    
+    bullet->health = 100;
+    bullet->p = entity->p + vec2(0.0f, 0.75f);
+    
+    if (upward) {
+        bullet->sprite_rot = 90.0f;//PI_F32 / 2.0f;
+        bullet->facing_dir = 0.0f;
+    } else {
+        bullet->facing_dir = entity->facing_dir;
+        bullet->sprite_rot = 0.0f;
+    }
+}
+
 
 
 int
@@ -338,10 +355,33 @@ main() {
     state->texture_dragon = LoadTexture("assets/dragon.png");
     state->texture_player = LoadTexture("assets/player.png");
     state->texture_bullet = LoadTexture("assets/bullet.png");
+    state->texture_charged_bullet = LoadTexture("assets/charged_bullet.png");
     
     RenderTexture2D render_target = LoadRenderTexture(state->game_width, state->game_height);
     
-    state->ps_fire = init_particle_system();
+    // Fire attack
+    state->ps_fire = init_particle_system(500);
+    state->ps_fire->start_p = vec2(5.0f, 5.0f);
+    
+    state->ps_fire->min_angle = PI_F32/4.0f + 0.3f; 
+    state->ps_fire->max_angle = PI_F32/4.0f - 0.3f;
+    
+    state->ps_fire->speed = 0.1f;
+    
+    state->ps_fire->spawn_rate = 0.6f;
+    state->ps_fire->delta_t = 0.015f;
+    
+    // Charging attack
+    state->ps_charging = init_particle_system(100);
+    state->ps_charging->start_p = vec2(5.0f, 5.0f);
+    
+    state->ps_charging->min_angle = 0;
+    state->ps_charging->max_angle = PI_F32*2.0f;
+    
+    state->ps_charging->speed = 0.05f;
+    
+    state->ps_charging->spawn_rate = 0.5f;
+    state->ps_charging->delta_t = 0.04f;
     
     
     Memory_Arena level_arena = {};
@@ -374,7 +414,7 @@ main() {
         // Update
         
         const f32 jump_height = 4.8f;
-        const f32 time_to_jump_apex = 3.0f * 0.5f;
+        const f32 time_to_jump_apex = 3.0f * 0.3f;
         const f32 initial_velocity = (-2.0f * jump_height) / time_to_jump_apex;
         const f32 jump_gravity = (2.0f * jump_height) / (time_to_jump_apex * time_to_jump_apex);
         const f32 gravity = jump_gravity*2.0f; // NOTE(Alexander): normal gravity is heavier than jumping gravity
@@ -421,37 +461,47 @@ main() {
                         bool attack = true;
                         bool jump = false;
                         f32 move_x = 0.0f;
+                        
+                        f32 accuracy = 2.0f - min(fabsf(dist.x), fabsf(dist.y));
+                        attack = accuracy > 0.0f;
+                        
                         //pln("%f, %f", dist.x, dist.y);
                         
                         
-                        //if (entity->ai_offensive) {
-                        
-                        if (fabsf(dist.y) > 7.0f) {
-                            if (fabsf(dist.x) > 0.5f) {
-                                move_x = -1.0f*sign(dist.x);
-                            }
-                        } else {
-                            if (fabsf(dist.x) > 3.0f) {
-                                
-                                if (fabsf(dist.y) > 2.0f) {
-                                    jump = true;
-                                }
-                                
-                                if (fabsf(dist.x) > 7.0f) {
+                        if (player->invincibility_frames <= 0) {
+                            
+                            if (fabsf(dist.y) > 7.0f) {
+                                if (fabsf(dist.x) > 0.5f) {
                                     move_x = -1.0f*sign(dist.x);
                                 }
-                                
                             } else {
-                                move_x = 1.0f*sign(dist.x);
+                                if (fabsf(dist.x) > 3.0f) {
+                                    
+                                    if (fabsf(dist.y) > 2.0f) {
+                                        jump = true;
+                                    }
+                                    
+                                    if (fabsf(dist.x) > 7.0f) {
+                                        move_x = -1.0f*sign(dist.x);
+                                    }
+                                    
+                                } else {
+                                    move_x = 1.0f*sign(dist.x);
+                                }
                             }
+                        } else {
+                            move_x = 1.0f*sign(dist.x);
                         }
-                        //}
                         
                         entity->is_attacking = false;
                         for (int j = 0; j < array_count(entity->attack_time); j++) {
                             if (entity->attack_time[j] > 0.0f) {
                                 entity->is_attacking = true;
                                 entity->attack_time[j] -= delta_time;
+                                
+                                if (j == 1 && entity->attack_time[1] <= 0.0f) {
+                                    shoot_bullet(entity, state->charged_bullet, dist.y > 7.0f);
+                                }
                             }
                             
                             if (entity->attack_cooldown[j] > 0.0f) {
@@ -466,33 +516,49 @@ main() {
                             }
                         }
                         
+                        
+                        bool is_charging =  entity->attack_time[1] > 0.0f;
+                        if (is_charging) {
+                            state->ps_charging->start_p = entity->p + vec2(0.0f, 1.0f);
+                        }
+                        update_particle_system(state->ps_charging, is_charging);
+                        
+                        
                         if (!entity->is_attacking) {
                             // Initiate a new attack
-                            if (attack && entity->attack_cooldown[0] <= 0.0f) {
-                                entity->attack_time[0] = 0.3f;
-                                entity->attack_cooldown[0] = 0.5f;
-                                entity->is_attacking = true;
-                                
-                                // Find available bullet
-                                for (int bi = 0; bi < array_count(state->bullets); bi++) {
-                                    Entity* bullet = state->bullets[bi];
-                                    if (bullet->health <= 0) {
-                                        bullet->health = 100;
-                                        bullet->p = entity->p;
+                            
+                            if (entity->invincibility_frames <= 0) {
+                                if (attack && entity->attack_cooldown[0] <= 0.0f) {
+                                    entity->attack_time[0] = 0.3f;
+                                    entity->attack_cooldown[0] = 0.5f;
+                                    entity->is_attacking = true;
+                                    
+                                    // Try use a charged bullet if there is a good chance
+                                    if (state->boss_enemy->is_attacking &&
+                                        state->charged_bullet->health <= 0 &&
+                                        entity->is_grounded &&
+                                        entity->attack_cooldown[1] <= 0.0f) {
                                         
-                                        if (dist.y > 7.0f) {
-                                            bullet->sprite_rot = 90.0f;//PI_F32 / 2.0f;
-                                            bullet->facing_dir = 0.0f;
-                                        } else {
-                                            bullet->facing_dir = entity->facing_dir;
-                                            bullet->sprite_rot = 0.0f;
+                                        entity->is_attacking = true;
+                                        entity->attack_time[1] = 1.5f;
+                                        entity->attack_cooldown[0] = 2.0f;
+                                        entity->attack_cooldown[1] = 15.0f;
+                                    } else {
+                                        
+                                        // Find available bullet
+                                        for (int bi = 0; bi < array_count(state->bullets); bi++) {
+                                            Entity* bullet = state->bullets[bi];
+                                            if (bullet->health <= 0) {
+                                                entity->is_attacking = true;
+                                                shoot_bullet(entity, bullet, dist.y > 7.0f);
+                                                break;
+                                            }
                                         }
-                                        break;
                                     }
+                                    
+                                } else {
+                                    // more attacks
                                 }
-                                
-                            } else {
-                                // more attacks
                             }
                             
                             entity->acceleration.x = move_x*16;
@@ -557,7 +623,8 @@ main() {
 #endif
                 } break;
                 
-                case Bullet: {
+                case Bullet:
+                case Charged_Bullet: {
                     entity->velocity.x = 0.0f;
                     entity->velocity.y = 0.0f;
                     if (entity->facing_dir == 0.0f) {
@@ -569,17 +636,26 @@ main() {
                         entity->health = 0;
                         
                         if (entity->collided_with == state->boss_enemy) {
-                            state->boss_enemy->health -= 10;
+                            if (state->boss_enemy->invincibility_frames <= 0) {
+                                state->boss_enemy->health -= entity->type == Charged_Bullet ? 50 : 10;
+                                state->boss_enemy->invincibility_frames = 40;
+                                
+                                if (entity->facing_dir == 0.0f) {
+                                    state->boss_enemy->velocity = vec2(0.0f, -3.0f);
+                                } else {
+                                    state->boss_enemy->velocity = vec2(entity->facing_dir*3.0f, 0.0f);
+                                }
+                            }
                         }
                     }
                 } break;
+                
                 
                 case Boss_Dragon: {
                     f32 fly_upward_gravity = 4.25f;
                     f32 fly_gravity = fly_upward_gravity*0.5f;
                     entity->acceleration.x = 0.0f;
                     entity->acceleration.y = (entity->is_jumping ? fly_upward_gravity : fly_gravity);
-                    
                     
                     //if (entity->is_grounded && abs(entity->acceleration.x) < epsilon32) {
                     //entity->velocity.x *= 0.8f;
@@ -618,13 +694,16 @@ main() {
                             entity->velocity = vec2_zero;
                             entity->acceleration = vec2_zero;
                         } else {
-                            // Initiate a new attack
-                            if (IsKeyPressed(KEY_F) && entity->attack_cooldown[0] <= 0.0f) {
-                                entity->attack_time[0] = 2.0f;
-                                entity->attack_cooldown[0] = 0.0f;
-                                entity->is_attacking = true;
-                            } else {
-                                // more attacks
+                            
+                            if (entity->invincibility_frames <= 0) {
+                                // Initiate a new attack
+                                if (IsKeyPressed(KEY_F) && entity->attack_cooldown[0] <= 0.0f) {
+                                    entity->attack_time[0] = 2.0f;
+                                    entity->attack_cooldown[0] = 0.0f;
+                                    entity->is_attacking = true;
+                                } else {
+                                    // more attacks
+                                }
                             }
                             
                             
@@ -675,8 +754,10 @@ main() {
                         ray.position = { rpos.x, rpos.y, 0.0f };
                         ray.direction = { entity->facing_dir, 1.0f, 0.0f };
                         
-                        f32 min_d = 0.1f;
-                        f32 max_d = 4.0f;
+                        f32 t = (2.0f - entity->attack_time[0]) * 2.0f;
+                        if (t >= 1.0f) t = 1.0f;
+                        f32 min_d = 0.0f;
+                        f32 max_d = t*4.0f;
                         
                         bool collision = ray_box_collision(ray, min_d, max_d, player_box);
                         
@@ -687,10 +768,17 @@ main() {
                         collision = collision || ray_box_collision(ray, min_d, max_d, player_box);
                         
                         if (collision) {
-                            player->health -= 1;
+                            if (player->invincibility_frames <= 0) {
+                                player->health -= 40;
+                                player->invincibility_frames = 40;
+                            }
                         }
                     }
                 } break;
+            }
+            
+            if (entity->invincibility_frames > 0) {
+                entity->invincibility_frames--;
             }
             
             if (entity->is_rigidbody) {
@@ -794,7 +882,10 @@ main() {
                 if (facing_right) {
                     src.width = -src.width;
                 }
-                DrawTexturePro(*entity->texture, src, dest, origin, entity->sprite_rot, WHITE);
+                
+                if (entity->invincibility_frames % 2 == 0) {
+                    DrawTexturePro(*entity->texture, src, dest, origin, entity->sprite_rot, WHITE);
+                }
                 
             } else {
                 v2 p = to_pixel(state, entity->p);
@@ -822,7 +913,7 @@ main() {
                     }
                     BeginBlendMode(BLEND_ALPHA);
                     
-#if BUILD_DEBUG && 1
+#if BUILD_DEBUG && 0
                     Ray ray;
                     v2 rpos = to_pixel(state, state->ps_fire->start_p);
                     ray.position = { rpos.x, rpos.y, 0.0f };
@@ -840,6 +931,24 @@ main() {
                 
                 
                 case Player: {
+                    Particle_System* ps = state->ps_charging;
+                    BeginBlendMode(BLEND_ADDITIVE);
+                    for (int j = 0; j < ps->particle_count; j++) {
+                        Particle* particle = &ps->particles[j];
+                        if (particle->t > 0.0f) {
+                            v2 cp = to_pixel(state, ps->start_p);
+                            v2 p1 = to_pixel(state, particle->p);
+                            v2 p0 = cp + (p1 - cp)*(1.0f - particle->t);
+                            Color color = YELLOW;
+                            //color.r = (u8) (color.r*particle->t);
+                            //color.g = (u8) (color.g*particle->t);
+                            //color.b = (u8) (50*particle->t);
+                            color.a = 25;//(u8) (particle->t*particle->t*particle->t*255.0f);
+                            DrawLine((int) p0.x, (int) p0.y, (int) p1.x, (int) p1.y, color);
+                        }
+                    }
+                    BeginBlendMode(BLEND_ALPHA);
+                    
                 } break;
             }
             
