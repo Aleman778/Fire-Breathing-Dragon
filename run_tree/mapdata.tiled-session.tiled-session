@@ -3,8 +3,9 @@
         "height": 4300,
         "width": 2
     },
-    "activeFile": "C:/Dev/platformer/assets/maps/test.tmx",
+    "activeFile": "C:/Users/alexa/Downloads/Cards of War/assets/GMTK-1.tmx",
     "expandedProjectPaths": [
+        "."
     ],
     "file.lastUsedOpenFilter": "All Files (*)",
     "fileStates": {
@@ -101,6 +102,17 @@
         "C:/Dev/platformer/code/assets/sprites/red_slime.tsx": {
             "scaleInDock": 1
         },
+        "C:/Users/alexa/Downloads/Cards of War/assets/GMTK-1.tmx": {
+            "scale": 1.11328125,
+            "selectedLayer": 0,
+            "viewCenter": {
+                "x": 780.5754385964913,
+                "y": 365.1368421052632
+            }
+        },
+        "C:/Users/alexa/Downloads/Cards of War/assets/tileset.tsx": {
+            "scaleInDock": 1
+        },
         "C:/Users/alexa/Downloads/gmtk22_windows/res/Ground.tsx": {
             "scaleInDock": 1
         },
@@ -113,12 +125,16 @@
             }
         },
         "interior.tmx": {
-            "scale": 4,
-            "selectedLayer": 0,
+            "scale": 3,
+            "selectedLayer": 1,
             "viewCenter": {
-                "x": 184.75,
-                "y": 80.75
+                "x": 400,
+                "y": 159.83333333333331
             }
+        },
+        "tiles.tsx": {
+            "scaleInDock": 4,
+            "scaleInEditor": 8
         }
     },
     "last.externalTilesetPath": "C:/Dev/platformer/assets/sprites",
@@ -133,14 +149,16 @@
     "map.tileHeight": 16,
     "map.tileWidth": 16,
     "openFiles": [
-        "C:/Dev/platformer/assets/maps/test.tmx",
-        "C:/Dev/platformer/assets/sprites/grass_tileset.tsx",
-        "C:/Dev/platformer/assets/sprites/jungle_misc.tsx",
-        "C:/Dev/platformer/assets/maps/level1-act2.tmx"
+        "interior.tmx",
+        "tiles.tsx",
+        "C:/Users/alexa/Downloads/Cards of War/assets/GMTK-1.tmx"
     ],
     "project": "mapdata.tiled-session.tiled-project",
     "property.type": "object",
     "recentFiles": [
+        "C:/Users/alexa/Downloads/Cards of War/assets/GMTK-1.tmx",
+        "interior.tmx",
+        "tiles.tsx",
         "C:/Dev/platformer/assets/maps/level1-act1.tmx",
         "C:/Dev/platformer/assets/maps/level1-act2.tmx",
         "C:/Dev/platformer/assets/sprites/jungle_misc.tsx",
@@ -149,10 +167,7 @@
         "C:/Dev/platformer/assets/maps/sandbox.tmx",
         "C:/Users/alexa/Downloads/gmtk22_windows/res/test.tmx",
         "C:/Dev/platformer/assets/sprites/demo1_tileset.tsx",
-        "C:/Dev/platformer/code/assets/maps/level1-act2.tmx",
-        "C:/Dev/platformer/assets/maps/level1-act2-caves.tmx",
-        "C:/Dev/platformer/assets/sprites/red_slime.tsx",
-        "C:/Dev/platformer/assets/sprites/player.tsx"
+        "C:/Dev/platformer/code/assets/maps/level1-act2.tmx"
     ],
     "tileset.lastUsedFilter": "Tiled tileset files (*.tsx *.xml)",
     "tileset.lastUsedFormat": "tsx",
