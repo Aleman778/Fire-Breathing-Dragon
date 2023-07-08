@@ -4,7 +4,11 @@
 #include <string.h>
 
 
-#define pln(...) printf(__VA_ARGS__)
+#if BUILD_DEBUG
+#define pln(format, ...) printf(format##"\n", __VA_ARGS__)
+#else
+#define pln(format, ...)
+#endif
 
 typedef int8_t    s8;
 typedef uint8_t   u8;
@@ -100,7 +104,8 @@ enum Entity_Type {
     Player,
     Box,
     Box_Collider,
-    Boss_Dragon
+    Boss_Dragon,
+    Bullet,
 };
 
 enum Game_Mode {
@@ -122,10 +127,14 @@ struct Entity {
     v2 acceleration;
     v3 max_speed;
     
+    Entity* collided_with;
+    bool collided;
+    
     Entity* holding;
     
     v2 texture_size;
     bool flip_texture;
+    f32 sprite_rot;
     Texture* texture;
     Color color;
     
@@ -143,6 +152,8 @@ struct Entity {
     bool is_jumping;
     bool is_attacking;
     bool is_rigidbody;
+    
+    bool ai_offensive;
     
     u32 pad;
 };
@@ -176,6 +187,7 @@ struct Game_State {
     
     Entity* player;
     Entity* boss_enemy;
+    Entity* bullets[5];
     
     Entity* entities;
     int entity_count;
@@ -201,4 +213,5 @@ struct Game_State {
     Texture2D texture_background;
     Texture2D texture_player;
     Texture2D texture_dragon;
+    Texture2D texture_bullet;
 };

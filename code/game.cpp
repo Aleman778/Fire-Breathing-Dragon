@@ -8,46 +8,54 @@
 #define sign(value) ((value) < 0 ? -1 : ((value) > 0 ? 1 : 0 ))
 
 bool
-box_collision(Entity collider, Entity* rigidbody, v2* step_velocity) {
+box_collision( Entity* rigidbody, Entity* other, v2* step_velocity, bool resolve) {
     bool found = false;
     
     v2 step_position = rigidbody->p + *step_velocity;
-    if (step_position.y + rigidbody->size.y > collider.p.y && 
-        step_position.y < collider.p.y + collider.size.y) {
+    if (step_position.y + rigidbody->size.y > other->p.y && 
+        step_position.y < other->p.y + other->size.y) {
         
-        if (step_velocity->x < 0.0f && rigidbody->p.x >= collider.p.x + collider.size.x) {
-            f32 x_overlap = collider.p.x + collider.size.x - step_position.x;
+        if (step_velocity->x < 0.0f && rigidbody->p.x >= other->p.x + other->size.x) {
+            f32 x_overlap = other->p.x + other->size.x - step_position.x;
             if (x_overlap > 0.0f) {
-                step_velocity->x = collider.p.x + collider.size.x - rigidbody->p.x;
-                rigidbody->velocity.x = 0.0f;
+                if (resolve) {
+                    step_velocity->x = other->p.x + other->size.x - rigidbody->p.x;
+                    rigidbody->velocity.x = 0.0f;
+                }
                 found = true;
             }
-        } else if (step_velocity->x > 0.0f && rigidbody->p.x + rigidbody->size.x <= collider.p.x) {
-            f32 x_overlap = step_position.x - collider.p.x + rigidbody->size.x;
+        } else if (step_velocity->x > 0.0f && rigidbody->p.x + rigidbody->size.x <= other->p.x) {
+            f32 x_overlap = step_position.x - other->p.x + rigidbody->size.x;
             if (x_overlap > 0.0f) {
-                step_velocity->x = collider.p.x - rigidbody->size.x - rigidbody->p.x;
-                rigidbody->velocity.x = 0.0f;
+                if (resolve) {
+                    step_velocity->x = other->p.x - rigidbody->size.x - rigidbody->p.x;
+                    rigidbody->velocity.x = 0.0f;
+                }
                 found = true;
             }
         }
     }
     
-    if (rigidbody->p.x + rigidbody->size.x > collider.p.x && 
-        rigidbody->p.x < collider.p.x + collider.size.x) {
-        if (step_velocity->y < 0.0f && rigidbody->p.y < collider.p.y + collider.size.y &&
-            rigidbody->p.y + rigidbody->size.y > collider.p.y) {
-            f32 y_overlap = step_position.y - collider.p.y + collider.size.y;
+    if (rigidbody->p.x + rigidbody->size.x > other->p.x && 
+        rigidbody->p.x < other->p.x + other->size.x) {
+        if (step_velocity->y < 0.0f && rigidbody->p.y < other->p.y + other->size.y &&
+            rigidbody->p.y + rigidbody->size.y > other->p.y) {
+            f32 y_overlap = step_position.y - other->p.y + other->size.y;
             if (y_overlap > 0.0f) {
-                step_velocity->y = collider.p.y + collider.size.y - rigidbody->p.y;
-                rigidbody->velocity.y = 0.0f;
+                if (resolve) {
+                    step_velocity->y = other->p.y + other->size.y - rigidbody->p.y;
+                    rigidbody->velocity.y = 0.0f;
+                }
                 found = true;
             }
-        } else if (step_velocity->y > 0.0f && rigidbody->p.y + rigidbody->size.y <= collider.p.y) {
-            f32 y_overlap = step_position.y - collider.p.y + rigidbody->size.y;
+        } else if (step_velocity->y > 0.0f && rigidbody->p.y + rigidbody->size.y <= other->p.y) {
+            f32 y_overlap = step_position.y - other->p.y + rigidbody->size.y;
             if (y_overlap > 0.0f) {
-                step_velocity->y = collider.p.y - rigidbody->size.y - rigidbody->p.y;
-                rigidbody->velocity.y = 0.0f;
-                rigidbody->is_grounded = true;
+                if (resolve) {
+                    step_velocity->y = other->p.y - rigidbody->size.y - rigidbody->p.y;
+                    rigidbody->velocity.y = 0.0f;
+                    rigidbody->is_grounded = true;
+                }
                 found = true;
             }
         }
@@ -83,8 +91,6 @@ spawn_entity(Game_State* state, Memory_Arena* arena, Entity_Type type) {
 }
 
 
-#define TILE_SIZE 16
-
 
 Entity*
 init_level(Game_State* state, Memory_Arena* arena) {
@@ -104,7 +110,7 @@ init_level(Game_State* state, Memory_Arena* arena) {
     player->texture = &state->texture_player;
     player->p = {10.0f, 6.0f};
     player->size = {1.0f, 2.0f};
-    player->max_speed.x = 6;
+    player->max_speed.x = 3.0f;
     player->is_rigidbody = true;
     player->facing_dir = 1.0f;
     player->color = SKYBLUE;
@@ -119,11 +125,22 @@ init_level(Game_State* state, Memory_Arena* arena) {
     boss_enemy->frame_advance_rate = 2.5f;
     boss_enemy->p = {3.0f, 3.0f};
     boss_enemy->size = {4.0f, 4.0f};
-    boss_enemy->max_speed.x = 2.2f;
+    boss_enemy->max_speed.x = 2.5f;
     boss_enemy->is_rigidbody = true;
     boss_enemy->color = RED;
     boss_enemy->max_health = 1000;
     boss_enemy->health = boss_enemy->max_health;
+    
+    for (int i = 0; i < array_count(state->bullets); i++) {
+        Entity* bullet = spawn_entity(state, arena, Bullet);
+        state->bullets[i] = bullet;
+        bullet->texture = &state->texture_bullet;
+        bullet->max_speed.x = 3.0f;
+        bullet->size = { 0.5f, 0.5f };
+        bullet->is_rigidbody = true;
+    }
+    
+    
     return player;
 }
 
@@ -264,12 +281,27 @@ update_particle_system(Particle_System* ps, bool spawn_new) {
 bool
 check_collisions(Game_State* state, Entity* entity, v2* step_velocity) {
     bool result = false;
+    entity->collided = false;
+    entity->collided_with = 0;
     
     for (int j = 0; j < state->entity_count; j++) {
-        Entity collider = state->entities[j];
-        if (&collider != entity && collider.type == Box_Collider) {
-            bool collided = box_collision(collider, entity, step_velocity);
+        Entity* other = &state->entities[j];
+        if (other != entity && other->is_rigidbody || other->type == Box_Collider) {
+            
+            // Some collision exceptions
+            if ((entity->type == Player && other->type == Bullet) ||
+                (entity->type == Bullet &&  other->type == Player) ||
+                (entity->type == Player && other->type == Boss_Dragon) ||
+                (entity->type == Boss_Dragon && other->type == Player) ||
+                (entity->is_rigidbody && entity->health <= 0) ||
+                (other->is_rigidbody && other->health <= 0)) {
+                continue;
+            }
+            
+            bool collided = box_collision(entity, other, step_velocity, !other->is_rigidbody);
             if (collided) {
+                entity->collided = true;
+                entity->collided_with = other;
                 result = true;
             }
         }
@@ -305,6 +337,7 @@ main() {
     state->texture_background = LoadTexture("assets/background.png");
     state->texture_dragon = LoadTexture("assets/dragon.png");
     state->texture_player = LoadTexture("assets/player.png");
+    state->texture_bullet = LoadTexture("assets/bullet.png");
     
     RenderTexture2D render_target = LoadRenderTexture(state->game_width, state->game_height);
     
@@ -341,7 +374,7 @@ main() {
         // Update
         
         const f32 jump_height = 4.8f;
-        const f32 time_to_jump_apex = 3.0f * 0.1f;
+        const f32 time_to_jump_apex = 3.0f * 0.5f;
         const f32 initial_velocity = (-2.0f * jump_height) / time_to_jump_apex;
         const f32 jump_gravity = (2.0f * jump_height) / (time_to_jump_apex * time_to_jump_apex);
         const f32 gravity = jump_gravity*2.0f; // NOTE(Alexander): normal gravity is heavier than jumping gravity
@@ -378,7 +411,102 @@ main() {
                         }
                         
                     } else if (state->mode == Control_Boss_Enemy) {
-                        // Program an AI
+                        
+                        Entity* target = state->boss_enemy;
+                        
+                        v2 dist = ((entity->p + entity->size/2.0f) -
+                                   (target->p + target->size/2.0f));
+                        
+                        
+                        bool attack = true;
+                        bool jump = false;
+                        f32 move_x = 0.0f;
+                        //pln("%f, %f", dist.x, dist.y);
+                        
+                        
+                        //if (entity->ai_offensive) {
+                        
+                        if (fabsf(dist.y) > 7.0f) {
+                            if (fabsf(dist.x) > 0.5f) {
+                                move_x = -1.0f*sign(dist.x);
+                            }
+                        } else {
+                            if (fabsf(dist.x) > 3.0f) {
+                                
+                                if (fabsf(dist.y) > 2.0f) {
+                                    jump = true;
+                                }
+                                
+                                if (fabsf(dist.x) > 7.0f) {
+                                    move_x = -1.0f*sign(dist.x);
+                                }
+                                
+                            } else {
+                                move_x = 1.0f*sign(dist.x);
+                            }
+                        }
+                        //}
+                        
+                        entity->is_attacking = false;
+                        for (int j = 0; j < array_count(entity->attack_time); j++) {
+                            if (entity->attack_time[j] > 0.0f) {
+                                entity->is_attacking = true;
+                                entity->attack_time[j] -= delta_time;
+                            }
+                            
+                            if (entity->attack_cooldown[j] > 0.0f) {
+                                entity->attack_cooldown[j] -= delta_time;
+                            }
+                        }
+                        
+                        for (int bi = 0; bi < array_count(state->bullets); bi++) {
+                            Entity* bullet = state->bullets[bi];
+                            if (bullet->health > 0) {
+                                bullet->health -= 1;
+                            }
+                        }
+                        
+                        if (!entity->is_attacking) {
+                            // Initiate a new attack
+                            if (attack && entity->attack_cooldown[0] <= 0.0f) {
+                                entity->attack_time[0] = 0.3f;
+                                entity->attack_cooldown[0] = 0.5f;
+                                entity->is_attacking = true;
+                                
+                                // Find available bullet
+                                for (int bi = 0; bi < array_count(state->bullets); bi++) {
+                                    Entity* bullet = state->bullets[bi];
+                                    if (bullet->health <= 0) {
+                                        bullet->health = 100;
+                                        bullet->p = entity->p;
+                                        
+                                        if (dist.y > 7.0f) {
+                                            bullet->sprite_rot = 90.0f;//PI_F32 / 2.0f;
+                                            bullet->facing_dir = 0.0f;
+                                        } else {
+                                            bullet->facing_dir = entity->facing_dir;
+                                            bullet->sprite_rot = 0.0f;
+                                        }
+                                        break;
+                                    }
+                                }
+                                
+                            } else {
+                                // more attacks
+                            }
+                            
+                            entity->acceleration.x = move_x*16;
+                            if (move_x != 0.0f) {
+                                entity->facing_dir = (f32) sign(move_x);
+                            } else {
+                                entity->facing_dir = (f32) -sign(dist.x);
+                            }
+                            
+                            if (entity->is_grounded && jump) {
+                                entity->velocity.y = initial_velocity;
+                                entity->is_jumping = true;
+                            }
+                        }
                     }
                     
                     entity->acceleration.y = entity->is_jumping ? jump_gravity : gravity;
@@ -429,9 +557,26 @@ main() {
 #endif
                 } break;
                 
+                case Bullet: {
+                    entity->velocity.x = 0.0f;
+                    entity->velocity.y = 0.0f;
+                    if (entity->facing_dir == 0.0f) {
+                        entity->velocity.y = -20.0f;
+                    } else {
+                        entity->velocity.x = 20.0f*entity->facing_dir;
+                    }
+                    if (entity->collided) {
+                        entity->health = 0;
+                        
+                        if (entity->collided_with == state->boss_enemy) {
+                            state->boss_enemy->health -= 10;
+                        }
+                    }
+                } break;
+                
                 case Boss_Dragon: {
                     entity->acceleration.x = 0.0f;
-                    entity->acceleration.y = (entity->is_jumping ? jump_gravity : gravity) * 0.01f;
+                    entity->acceleration.y = (entity->is_jumping ? jump_gravity * 10.0f : gravity) * 0.1f;
                     
                     
                     //if (entity->is_grounded && abs(entity->acceleration.x) < epsilon32) {
@@ -480,13 +625,21 @@ main() {
                                 // more attacks
                             }
                             
+                            
+                            if (IsKeyPressed(KEY_S)) { 
+                                entity->velocity.y = 2.0f;
+                            }
+                            if (IsKeyDown(KEY_S)) {
+                                entity->acceleration.y *= 2.0f;
+                            }
+                            
                             if (IsKeyDown(KEY_A)) {
                                 entity->acceleration.x = -16;
                                 entity->facing_dir = -1.0f;
                             }
                             
                             if (IsKeyPressed(KEY_SPACE)) {
-                                entity->velocity.y = -2.0f;
+                                entity->velocity.y = -3.0f;
                                 entity->is_jumping = true;
                             }
                             
@@ -518,17 +671,17 @@ main() {
                         
                         Ray ray;
                         ray.position = { rpos.x, rpos.y, 0.0f };
-                        ray.direction = { 1.0f, 1.0f, 0.0f };
+                        ray.direction = { entity->facing_dir, 1.0f, 0.0f };
                         
                         f32 min_d = 0.1f;
                         f32 max_d = 4.0f;
                         
                         bool collision = ray_box_collision(ray, min_d, max_d, player_box);
                         
-                        ray.direction = { 1.0f, 1.6f, 0.0f };
+                        ray.direction = { entity->facing_dir, 1.6f, 0.0f };
                         collision = collision || ray_box_collision(ray, min_d, max_d, player_box);
                         
-                        ray.direction = { 1.0f, 0.6f, 0.0f };
+                        ray.direction = { entity->facing_dir, 0.6f, 0.0f };
                         collision = collision || ray_box_collision(ray, min_d, max_d, player_box);
                         
                         if (collision) {
@@ -617,6 +770,7 @@ main() {
         for (int i = 0; i < state->entity_count; i++) {
             Entity* entity = &state->entities[i];
             if (!entity->type) continue;
+            if (entity->health <= 0) continue;
             
             if (entity->texture) {
                 v2 p = to_pixel(state, entity->p);
@@ -638,7 +792,7 @@ main() {
                 if (facing_right) {
                     src.width = -src.width;
                 }
-                DrawTexturePro(*entity->texture, src, dest, origin, 0.0f, WHITE);
+                DrawTexturePro(*entity->texture, src, dest, origin, entity->sprite_rot, WHITE);
                 
             } else {
                 v2 p = to_pixel(state, entity->p);
@@ -666,17 +820,17 @@ main() {
                     }
                     BeginBlendMode(BLEND_ALPHA);
                     
-#if BUILD_DEBUG && 0
+#if BUILD_DEBUG && 1
                     Ray ray;
                     v2 rpos = to_pixel(state, state->ps_fire->start_p);
                     ray.position = { rpos.x, rpos.y, 0.0f };
-                    ray.direction = { 1.0f, 1.0f, 0.0f };
+                    ray.direction = { entity->facing_dir, 1.0f, 0.0f };
                     DrawRay(ray, PURPLE);
                     
-                    ray.direction = { 1.0f, 1.6f, 0.0f };
+                    ray.direction = { entity->facing_dir, 1.6f, 0.0f };
                     DrawRay(ray, PURPLE);
                     
-                    ray.direction = { 1.0f, 0.6f, 0.0f };
+                    ray.direction = { entity->facing_dir, 0.6f, 0.0f };
                     DrawRay(ray, PURPLE);
 #endif
                     
