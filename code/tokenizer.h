@@ -10,7 +10,7 @@ eat_string(u8** scanner, cstring pattern) {
         }
     }
     string result;
-    result.data = cast(u8*) *scanner;
+    result.data = (u8*) *scanner;
     result.count = count;
     
     *scanner = scan;
@@ -20,7 +20,7 @@ eat_string(u8** scanner, cstring pattern) {
 string
 eat_until(u8** scanner, u8 end) {
     string result;
-    result.data = cast(u8*) *scanner;
+    result.data = (u8*) *scanner;
     
     u32 count = 0;
     u8* scan = *scanner;

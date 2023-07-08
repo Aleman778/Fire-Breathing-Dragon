@@ -81,8 +81,8 @@ push_size(Memory_Arena* arena, umm size, umm align=DEFAULT_ALIGNMENT, umm flags=
     return result;
 }
 
-#define push_struct(arena, type, ...) (type*) push_size(arena, sizeof(type), alignof(type), __VA_ARGS__)
-#define push_array_of_structs(arena, count, type, ...) (type*) push_size(arena, count*sizeof(type), alignof(type), __VA_ARGS__)
+#define push_struct(arena, type) (type*) push_size(arena, sizeof(type), alignof(type))
+#define push_array_of_structs(arena, count, type) (type*) push_size(arena, count*sizeof(type), alignof(type))
 
 inline void
 arena_rewind(Memory_Arena* arena) {
