@@ -30,6 +30,6 @@ goto :EOF
 
 :Compile
     cl %compiler_flags% ../code/game.cpp -link %linker_flags%
-    xcopy /y game.exe ..\run_tree\simple.exe
+    copy /y game.exe ..\run_tree\game.exe
 
 popd

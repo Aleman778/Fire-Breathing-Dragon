@@ -286,7 +286,7 @@ check_collisions(Game_State* state, Entity* entity, v2* step_velocity) {
     
     for (int j = 0; j < state->entity_count; j++) {
         Entity* other = &state->entities[j];
-        if (other != entity && other->is_rigidbody || other->type == Box_Collider) {
+        if ((other != entity && other->is_rigidbody) || other->type == Box_Collider) {
             
             // Some collision exceptions
             if ((entity->type == Player && other->type == Bullet) ||
@@ -575,8 +575,10 @@ main() {
                 } break;
                 
                 case Boss_Dragon: {
+                    f32 fly_upward_gravity = 4.25f;
+                    f32 fly_gravity = fly_upward_gravity*0.5f;
                     entity->acceleration.x = 0.0f;
-                    entity->acceleration.y = (entity->is_jumping ? jump_gravity * 10.0f : gravity) * 0.1f;
+                    entity->acceleration.y = (entity->is_jumping ? fly_upward_gravity : fly_gravity);
                     
                     
                     //if (entity->is_grounded && abs(entity->acceleration.x) < epsilon32) {
