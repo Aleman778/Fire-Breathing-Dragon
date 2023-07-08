@@ -1,5 +1,5 @@
 #define TILE_SIZE 16
-#define BUILD_DEBUG 1
+#define BUILD_DEBUG 0
 
 #include <basic.sq>
 
@@ -206,7 +206,7 @@ draw_health_bar(Game_State* game_state, Entity* entity, Color color, bool right=
     if (right) {
         xoffset = game_state.game_width/2 - 7;
     } else {
-        xoffset_inner = game_state.game_width/2 - 7 - (int) width;
+        xoffset_inner = game_state.game_width/2 - 8 - (int) width;
     }
     DrawRectangle(7 + xoffset, 7, game_state.game_width/2-6, 6, BLACK);
     DrawRectangle(8 + xoffset + xoffset_inner, 8, (int) width, 4, color);
@@ -398,8 +398,6 @@ main() {
                             entity.is_jumping = false;
                         }
                         
-                        entity.acceleration.y = entity.is_jumping ? jump_gravity : gravity;
-                        
                         if (entity.is_grounded && IsKeyPressed(KeyboardKey.KEY_SPACE)) {
                             entity.velocity.y = initial_velocity;
                             entity.is_jumping = true;
@@ -408,6 +406,9 @@ main() {
                     } else if (game_state.mode == Game_Mode.Control_Boss_Enemy) {
                         // Program an AI
                     }
+                    
+                    entity.acceleration.y = entity.is_jumping ? jump_gravity : gravity;
+                    
                     
 #if 0
                     if (IsKeyPressed(KeyboardKey.KEY_E)) {
@@ -758,7 +759,7 @@ main() {
             dest.x = (game_state.screen_width - dest.width)/2.0f;
             DrawTexturePro(render_texture, src, dest, origin, 0, WHITE);
             
-            
+#if BUILD_DEBUG
             {
                 string s = string_print("%", game_state.mode);
                 cstring cs = string_to_cstring(s);
@@ -767,6 +768,8 @@ main() {
             }
             
             DrawFPS(8, game_state.screen_height - 24);
+#endif
+            
             EndDrawing();
         }
     }

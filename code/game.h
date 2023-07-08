@@ -16,8 +16,8 @@ enum Entity_Type {
 }
 
 enum Game_Mode {
-    Control_Player,
     Control_Boss_Enemy,
+    Control_Player,
 }
 
 #define NUM_ATTACKS 3
