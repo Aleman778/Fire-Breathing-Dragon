@@ -27,6 +27,10 @@ commands = {
    .win = "build_windows.bat",
    .linux = "./build.sh",
    .mac = "./build.sh", },
+ .build_release = { .out = "*compilation*", .footer_panel = true, .save_dirty_files = true,
+   .win = "build_windows.bat release",
+   .linux = "./build.sh",
+   .mac = "./build.sh", },
  .run = { .out = "*run*", .footer_panel = false, .save_dirty_files = false,
    .win = "cd run_tree && game.exe",
    .linux = "cd run_tree && ./main",
@@ -42,7 +46,8 @@ commands = {
 };
 fkey_command = {
 .F1 = "build",
+.F3 = "build_release",
 .F2 = "run",
-.F3 = "build_wasm",
-.F4 = "build_wasm_release",
+.F4 = "build_wasm",
+.F5 = "build_wasm_release",
 };

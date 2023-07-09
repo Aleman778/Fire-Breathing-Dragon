@@ -291,8 +291,8 @@ check_collisions(Game_State* state, Entity* entity, v2* step_velocity) {
         if ((other != entity && other->is_rigidbody) || other->type == Box_Collider) {
             
             // Some collision exceptions
-            if ((entity->type == Player && other->type == Bullet) ||
-                (entity->type == Bullet &&  other->type == Player) ||
+            if ((entity->type == Player && (other->type == Bullet || other->type == Charged_Bullet)) ||
+                ((entity->type == Bullet || entity->type == Charged_Bullet) &&  other->type == Player) ||
                 (entity->type == Player && other->type == Boss_Dragon) ||
                 (entity->type == Boss_Dragon && other->type == Player) ||
                 (entity->is_rigidbody && entity->health <= 0) ||
@@ -317,7 +317,7 @@ void
 shoot_bullet(Entity* entity, Entity* bullet, bool upward) {
     
     bullet->health = 100;
-    bullet->p = entity->p + vec2(0.0f, 0.75f);
+    bullet->p = entity->p + vec2((upward && entity->facing_dir == 1.0f) ? 1.3f : 0.0f, 0.75f);
     
     if (upward) {
         bullet->sprite_rot = 90.0f;//PI_F32 / 2.0f;
@@ -469,7 +469,6 @@ main() {
                                 accuracy = -1.0f;
                             }
                         }
-                        pln("accuracy = %f", accuracy);
                         //pln("%f, %f", dist.x, dist.y);
                         
                         
@@ -482,10 +481,10 @@ main() {
                             }
                         }
                         
-                        // if safe distance away attack
-                        //if (fabsf(dist.x) > 5.0f) {
-                        //go_to_attack = true;
-                        //}
+                        // if safe distance away attack anyways
+                        if (fabsf(dist.x) > 7.0f || fabsf(dist.y) > 7.0f) {
+                            go_to_attack = true;
+                        }
                         
                         if (go_to_attack) {
                             attack = accuracy > 0.0f;
@@ -666,7 +665,7 @@ main() {
                         
                         if (entity->collided_with == state->boss_enemy) {
                             if (state->boss_enemy->invincibility_frames <= 0) {
-                                state->boss_enemy->health -= entity->type == Charged_Bullet ? 50 : 10;
+                                state->boss_enemy->health -= entity->type == Charged_Bullet ? 100 : 10;
                                 state->boss_enemy->invincibility_frames = 40;
                                 
                                 if (entity->facing_dir == 0.0f) {
