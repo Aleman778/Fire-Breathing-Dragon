@@ -104,12 +104,14 @@ enum Entity_Type {
     Player,
     Box,
     Box_Collider,
+    Door,
     Boss_Dragon,
     Bullet,
     Charged_Bullet,
 };
 
 enum Game_Mode {
+    Intro_Cutscene,
     Control_Boss_Enemy,
     Control_Player,
 };
@@ -189,10 +191,14 @@ struct Particle_System {
 struct Game_State {
     Game_Mode mode;
     
+    f32 cutscene_time;
+    
     Entity* player;
     Entity* boss_enemy;
     Entity* bullets[5];
     Entity* charged_bullet;
+    Entity* left_door;
+    Entity* right_door;
     
     Entity* entities;
     int entity_count;
@@ -219,6 +225,13 @@ struct Game_State {
     Texture2D texture_background;
     Texture2D texture_player;
     Texture2D texture_dragon;
+    Texture2D texture_door;
     Texture2D texture_bullet;
     Texture2D texture_charged_bullet;
+    
+    Sound sound_shoot_bullet;
+    Sound sound_explosion;
+    Sound sound_hurt;
 };
+
+#define cutscene_interval(begin, end) (state->cutscene_time > (begin) && state->cutscene_time < (end))

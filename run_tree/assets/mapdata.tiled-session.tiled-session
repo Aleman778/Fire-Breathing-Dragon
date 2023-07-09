@@ -1,5 +1,5 @@
 {
-    "activeFile": "assets/interior.tmx",
+    "activeFile": "interior.tmx",
     "expandedProjectPaths": [
         "."
     ],
@@ -135,8 +135,8 @@
             "scale": 3,
             "selectedLayer": 1,
             "viewCenter": {
-                "x": 299.99999999999994,
-                "y": 83.66666666666664
+                "x": 195.99999999999997,
+                "y": 106.66666666666666
             }
         },
         "tiles.tsx": {
@@ -145,13 +145,13 @@
         }
     },
     "openFiles": [
-        "assets/interior.tmx"
+        "interior.tmx"
     ],
     "project": "mapdata.tiled-session.tiled-project",
     "recentFiles": [
+        "interior.tmx",
         "assets/interior.tmx",
         "tiles.tsx",
-        "interior.tmx",
         "C:/Users/alexa/Downloads/Cards of War/assets/GMTK-1.tmx",
         "C:/Dev/platformer/assets/maps/level1-act1.tmx",
         "C:/Dev/platformer/assets/maps/level1-act2.tmx",

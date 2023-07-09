@@ -100,6 +100,9 @@ init_level(Game_State* state, Memory_Arena* arena) {
     
     state->entity_count = 0;
     
+    state->mode = Intro_Cutscene;
+    state->cutscene_time = 0.0f;
+    
     Loaded_Tmx tmx = read_tmx_map_data(string_lit("assets/interior.tmx"), arena);
     state->entities = tmx.entities;
     state->entity_count = tmx.entity_count;
@@ -110,7 +113,7 @@ init_level(Game_State* state, Memory_Arena* arena) {
     Entity* player = spawn_entity(state, arena, Player);
     state->player = player;
     player->texture = &state->texture_player;
-    player->p = {10.0f, 6.0f};
+    player->p = {24.0f, 12.0f};
     player->size = {1.0f, 2.0f};
     player->max_speed.x = 3.0f;
     player->is_rigidbody = true;
@@ -125,7 +128,7 @@ init_level(Game_State* state, Memory_Arena* arena) {
     boss_enemy->texture = &state->texture_dragon;
     boss_enemy->num_frames = 8;
     boss_enemy->frame_advance_rate = 2.5f;
-    boss_enemy->p = {3.0f, 3.0f};
+    boss_enemy->p = {-5.0f, 10.0f};
     boss_enemy->size = {4.0f, 4.0f};
     boss_enemy->max_speed.x = 2.5f;
     boss_enemy->is_rigidbody = true;
@@ -148,6 +151,23 @@ init_level(Game_State* state, Memory_Arena* arena) {
     bullet->max_speed.x = 3.0f;
     bullet->size = { 0.75f, 0.75f };
     bullet->is_rigidbody = true;
+    
+    
+    Entity* left_door = spawn_entity(state, arena, Door);
+    state->left_door = left_door;
+    left_door->texture = &state->texture_door;
+    left_door->health = 1;
+    left_door->p = { 0.0f, 10.0f };
+    left_door->size = { 1.0f, 0.0f };
+    left_door->is_rigidbody = false;
+    
+    Entity* right_door = spawn_entity(state, arena, Door);
+    state->right_door = right_door;
+    right_door->texture = &state->texture_door;
+    right_door->health = 1;
+    right_door->p = { 21.0f, 10.0f };
+    right_door->size = { 1.0f, 0.0f };
+    right_door->is_rigidbody = false;
     
     return player;
 }
@@ -314,7 +334,9 @@ check_collisions(Game_State* state, Entity* entity, v2* step_velocity) {
 
 
 void
-shoot_bullet(Entity* entity, Entity* bullet, bool upward) {
+shoot_bullet(Game_State* state, Entity* entity, Entity* bullet, bool upward) {
+    
+    PlaySound(state->sound_shoot_bullet);
     
     bullet->health = 100;
     bullet->p = entity->p + vec2((upward && entity->facing_dir == 1.0f) ? 1.3f : 0.0f, 0.75f);
@@ -349,13 +371,20 @@ main() {
     InitWindow(state->screen_width, state->screen_height, "GMTK Game Jam 2023");
     SetTargetFPS(60);
     
+    InitAudioDevice();
+    
     //cstring tiles = (cstring) "tiles.png";
     state->texture_tiles = LoadTexture("assets/tiles.png");
     state->texture_background = LoadTexture("assets/background.png");
     state->texture_dragon = LoadTexture("assets/dragon.png");
     state->texture_player = LoadTexture("assets/player.png");
+    state->texture_door = LoadTexture("assets/door.png");
     state->texture_bullet = LoadTexture("assets/bullet.png");
     state->texture_charged_bullet = LoadTexture("assets/charged_bullet.png");
+    
+    state->sound_shoot_bullet = LoadSound("assets/shoot_bullet.wav");
+    state->sound_explosion = LoadSound("assets/explosion.wav");
+    state->sound_hurt = LoadSound("assets/hurt.wav");
     
     RenderTexture2D render_target = LoadRenderTexture(state->game_width, state->game_height);
     
@@ -419,6 +448,15 @@ main() {
         const f32 jump_gravity = (2.0f * jump_height) / (time_to_jump_apex * time_to_jump_apex);
         const f32 gravity = jump_gravity*2.0f; // NOTE(Alexander): normal gravity is heavier than jumping gravity
         
+        
+        if (state->mode == Intro_Cutscene) {
+            state->cutscene_time += delta_time;
+            
+            if (state->cutscene_time > 8.0f) {
+                state->mode = Control_Boss_Enemy;
+            }
+        }
+        
         Vector2 origin =  {};
         
         for (int i = 0; i < state->entity_count; i++) {
@@ -430,7 +468,17 @@ main() {
                     entity->acceleration.y = 0.0f;
                     entity->acceleration.x = 0.0f;
                     
-                    if (state->mode == Control_Player) {
+                    if (state->mode == Intro_Cutscene) {
+                        if (cutscene_interval(0.4, 2.5f)) {
+                            entity->acceleration.x = -16;
+                            entity->facing_dir = -1.0f;
+                        } else if (cutscene_interval(3.5f, 5.5f)) {
+                            entity->facing_dir = 1.0f;
+                        } else {
+                            entity->facing_dir = -1.0f;
+                        }
+                        
+                    } else if (state->mode == Control_Player) {
                         if (IsKeyDown(KEY_A)) {
                             entity->acceleration.x = -16;
                             entity->facing_dir = -1.0f;
@@ -527,7 +575,7 @@ main() {
                                 entity->attack_time[j] -= delta_time;
                                 
                                 if (j == 1 && entity->attack_time[1] <= 0.0f) {
-                                    shoot_bullet(entity, state->charged_bullet, dist.y > 7.0f);
+                                    shoot_bullet(state, entity, state->charged_bullet, dist.y > 7.0f);
                                 }
                             }
                             
@@ -578,7 +626,7 @@ main() {
                                             Entity* bullet = state->bullets[bi];
                                             if (bullet->health <= 0) {
                                                 entity->is_attacking = true;
-                                                shoot_bullet(entity, bullet, dist.y > 7.0f);
+                                                shoot_bullet(state, entity, bullet, dist.y > 7.0f);
                                                 break;
                                             }
                                         }
@@ -651,6 +699,36 @@ main() {
 #endif
                 } break;
                 
+                case Door: {
+                    if (state->mode == Intro_Cutscene) {
+                        if (entity == state->right_door) {
+                            if (cutscene_interval(3.0f, 3.5f)) {
+                                entity->size.y += delta_time*8.0f;
+                            } else if (cutscene_interval(3.5f, 10.0f)) {
+                                entity->size.y = 4.0f;
+                                
+                                if (entity->health == 1) {
+                                    PlaySound(state->sound_explosion);
+                                    entity->health = 2;
+                                }
+                            }
+                        } else if (entity == state->left_door) {
+                            if (cutscene_interval(6.0f, 6.5f)) {
+                                entity->size.y += delta_time*8.0f;
+                            } else if (cutscene_interval(6.5f, 10.0f)) {
+                                entity->size.y = 4.0f;
+                                
+                                if (entity->health == 1) {
+                                    PlaySound(state->sound_explosion);
+                                    entity->health = 2;
+                                }
+                            }
+                        }
+                    } else {
+                        entity->size.y = 4.0f;
+                    }
+                } break;
+                
                 case Bullet:
                 case Charged_Bullet: {
                     entity->velocity.x = 0.0f;
@@ -668,6 +746,7 @@ main() {
                                 state->boss_enemy->health -= entity->type == Charged_Bullet ? 100 : 10;
                                 state->boss_enemy->invincibility_frames = 40;
                                 
+                                PlaySound(state->sound_hurt);
                                 if (entity->facing_dir == 0.0f) {
                                     state->boss_enemy->velocity = vec2(0.0f, -3.0f);
                                 } else {
@@ -704,7 +783,14 @@ main() {
                         
                     }
                     
-                    if (state->mode == Control_Boss_Enemy) {
+                    
+                    if (state->mode == Intro_Cutscene) {
+                        if (cutscene_interval(3.5f, 6.5f)) {
+                            entity->acceleration.x = 16;
+                            entity->facing_dir = 1.0f;
+                        }
+                        
+                    } else if (state->mode == Control_Boss_Enemy) {
                         
                         entity->is_attacking = false;
                         for (int j = 0; j < array_count(entity->attack_time); j++) {
@@ -1001,9 +1087,10 @@ main() {
         draw_level_bounds(state);
         
         
-        
-        draw_health_bar(state, state->boss_enemy, RED, false);
-        draw_health_bar(state, state->player, SKYBLUE, true);
+        if (state->mode == Control_Boss_Enemy) {
+            draw_health_bar(state, state->boss_enemy, RED, false);
+            draw_health_bar(state, state->player, SKYBLUE, true);
+        }
         
         //DrawRectangle(5, 5, state->game_width/2-10, 8, BLACK);
         //DrawRectangle(6, 6, state->game_width/2-12, 6, RED);
