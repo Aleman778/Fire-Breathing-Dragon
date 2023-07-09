@@ -518,7 +518,7 @@ main() {
                         Entity* target = state->boss_enemy;
                         
                         v2 dist = ((entity->p + entity->size/2.0f) -
-                                   (target->p + (target->size/2.0f)*vec2(target->facing_dir, 1.0f)));
+                                   (target->p + (target->size/2.0f)));
                         
                         bool attack = false;
                         bool jump = false;
@@ -835,8 +835,10 @@ main() {
                                     entity->attack_time[0] = 2.0f;
                                     entity->attack_cooldown[0] = 5.0f;
                                     entity->is_attacking = true;
-                                } else {
-                                    // more attacks
+                                } else if (IsKeyPressed(KEY_E) && entity->attack_cooldown[1] <= 0.0f) {
+                                    //entity->attack_time[1] = 2.0f;
+                                    //entity->attack_cooldown[1] = 5.0f;
+                                    //entity->is_attacking = true;
                                 }
                             }
                             
@@ -1146,6 +1148,21 @@ main() {
             Rectangle dest = { 0, 0, 0, (f32) state->screen_height };
             dest.width = aspect_ratio*state->screen_height;
             dest.x = (state->screen_width - dest.width)/2.0f;
+            
+            //dest.x += dest.width;
+            if (state->mode == Intro_Cutscene) {
+                if (cutscene_interval(7.0f, 7.5f)) {
+                    f32 t = (state->cutscene_time - 7.0f)*4.0f;
+                    
+                    f32 swap = fabsf(1.0f - t);
+                    dest.x = dest.x + (dest.width / 2.0f) * (1.0f - swap);
+                    dest.width = dest.width * swap;
+                    
+                    if (!cutscene_interval(7.25f, 8.0f)) {
+                        src.width = -src.width;
+                    }
+                }
+            }
             DrawTexturePro(render_texture, src, dest, origin, 0, WHITE);
             
 #if BUILD_DEBUG
