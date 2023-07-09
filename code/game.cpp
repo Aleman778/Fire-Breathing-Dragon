@@ -525,6 +525,12 @@ main() {
                         f32 move_x = 0.0f;
                         
                         f32 accuracy = 2.0f - min(fabsf(dist.x), fabsf(dist.y));
+                        f32 charge_accuracy = 4.0f - min(fabsf(dist.x), fabsf(dist.y));
+                        
+                        // Too far to hit
+                        if (max(fabsf(dist.x), fabsf(dist.y)) > 7.0f) {
+                            accuracy = -1.0f;
+                        }
                         
                         // no accuracy if looking the other way
                         if (fabsf(dist.y) < 2.0f) {
@@ -532,6 +538,7 @@ main() {
                                 accuracy = -1.0f;
                             }
                         }
+                        
                         //pln("%f, %f", dist.x, dist.y);
                         
                         
@@ -549,10 +556,17 @@ main() {
                             go_to_attack = true;
                         }
                         
+                        bool shoot_upwards = false;
                         if (go_to_attack) {
                             attack = accuracy > 0.0f;
                             
-                            if (fabsf(dist.y) > 7.0f) {
+                            if (fabsf(dist.y) > 5.0f) {
+                                shoot_upwards = true;
+                                
+                                if (fabsf(dist.y) > 7.0f) {
+                                    jump = random_f32() <= 0.01f;
+                                }
+                                
                                 if (fabsf(dist.x) > 0.5f) {
                                     move_x = -1.0f*sign(dist.x);
                                 }
@@ -590,7 +604,7 @@ main() {
                                 entity->attack_time[j] -= delta_time;
                                 
                                 if (j == 1 && entity->attack_time[1] <= 0.0f) {
-                                    shoot_bullet(state, entity, state->charged_bullet, dist.y > 7.0f);
+                                    shoot_bullet(state, entity, state->charged_bullet, shoot_upwards);
                                 }
                             }
                             
@@ -609,7 +623,8 @@ main() {
                         
                         bool is_charging =  entity->attack_time[1] > 0.0f;
                         if (is_charging) {
-                            state->ps_charging->start_p = entity->p + vec2(0.0f, 1.0f);
+                            state->ps_charging->start_p = entity->p + 
+                                vec2(entity->facing_dir > 0.0f ? 1.0f : 0.0f, 1.0f);
                         }
                         update_particle_system(state->ps_charging, is_charging);
                         
@@ -626,8 +641,8 @@ main() {
                                     f32 far_dist = max(fabsf(dist.x), fabsf(dist.y));
                                     
                                     // Try use a charged bullet if there is a good chance
-                                    if (accuracy > 0.5f &&
-                                        (state->boss_enemy->is_attacking || far_dist > 5.0f) &&
+                                    if (charge_accuracy > 0.25f &&
+                                        (state->boss_enemy->is_attacking || far_dist > 4.0f) &&
                                         state->charged_bullet->health <= 0 &&
                                         entity->is_grounded &&
                                         entity->attack_cooldown[1] <= 0.0f) {
@@ -635,7 +650,7 @@ main() {
                                         entity->is_attacking = true;
                                         entity->attack_time[1] = 1.5f;
                                         entity->attack_cooldown[0] = 2.0f;
-                                        entity->attack_cooldown[1] = 15.0f;
+                                        entity->attack_cooldown[1] = 10.0f;
                                     } else {
                                         
                                         // Find available bullet
@@ -643,7 +658,7 @@ main() {
                                             Entity* bullet = state->bullets[bi];
                                             if (bullet->health <= 0) {
                                                 entity->is_attacking = true;
-                                                shoot_bullet(state, entity, bullet, dist.y > 7.0f);
+                                                shoot_bullet(state, entity, bullet, shoot_upwards);
                                                 entity->attack_cooldown[0] = random_f32()*2.0f;
                                                 break;
                                             }
