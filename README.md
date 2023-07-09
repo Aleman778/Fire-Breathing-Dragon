@@ -1,4 +1,6 @@
-# GMTK Game Jam 2023
+# Fire Breathing Dragon
+![Screenshot](https://raw.githubusercontent.com/Aleman778/Fire-Breathing-Dragon/main/screenshot.png)
+
 My entry for the GMTK Game Jam 2023. 
 The theme for this jam is **Roles Reversed** which means you will be playing a role that you normally don't play.
 
