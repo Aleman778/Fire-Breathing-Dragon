@@ -234,7 +234,10 @@ struct Game_State {
     Sound sound_player_hurt;
     Sound sound_fire_breathing;
     Sound sound_charging;
+    Sound sound_lose;
+    Sound sound_win;
     
+    Font font;
 };
 
 #define cutscene_interval(begin, end) (state->cutscene_time > (begin) && state->cutscene_time < (end))

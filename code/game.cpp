@@ -404,8 +404,15 @@ main() {
     state->sound_player_hurt = LoadSound("assets/player_hurt.wav");
     state->sound_fire_breathing = LoadSound("assets/fire_breath.wav");
     state->sound_charging = LoadSound("assets/charging.wav");
+    state->sound_lose = LoadSound("assets/lose.wav");
+    state->sound_win = LoadSound("assets/win.wav");
+    
+    state->font = LoadFontEx("assets/doomed.ttf", 42, 0, 0);
+    SetTextureFilter(state->font.texture, TEXTURE_FILTER_POINT);
     
     RenderTexture2D render_target = LoadRenderTexture(state->game_width, state->game_height);
+    SetTextureFilter(render_target.texture, TEXTURE_FILTER_POINT);
+    
     
     // Fire attack
     state->ps_fire = init_particle_system(500);
@@ -1201,7 +1208,55 @@ main() {
         if (state->mode == Control_Boss_Enemy) {
             draw_health_bar(state, state->boss_enemy, RED, false);
             draw_health_bar(state, state->player, SKYBLUE, true);
+            
+            
+            // Checking victory conditions
+            Entity* boss = state->boss_enemy;
+            if (boss->health <= 0 || player->health <= 0) {
+                
+                if (boss->health > -1000 && boss->health <= 0) {
+                    PlaySound(state->sound_lose);
+                    boss->health = -2000;
+                    state->cutscene_time = 0.0f;
+                }
+                
+                if (player->health > -1000 && player->health <= 0) {
+                    PlaySound(state->sound_win);
+                    player->health = -2000;
+                    state->cutscene_time = 0.0f;
+                }
+                
+                state->cutscene_time += delta_time;
+                
+                cstring text;
+                Color text_color;
+                if (boss->health <= 0) {
+                    text = "You lost!";
+                    text_color = MAROON;
+                } else {
+                    text = "You win!";
+                    text_color = BLUE;
+                }
+                
+                
+                Vector2 size = MeasureTextEx(state->font, text, 42.0f, 0.0f);
+                Vector2 p;
+                p.x = state->game_width /2.0f - size.x /2.0f;
+                p.y = state->game_height /2.0f - size.y /2.0f;
+                DrawTextEx(state->font, text, p, 42.0f, 0.0f, text_color);
+                
+                f32 rate = 500.0f;
+                Color c = {};
+                if (cutscene_interval(3.5f, 5.5f)) {
+                    f32 val = (state->cutscene_time-3.5f)*rate;
+                    c.a = (u8) (val > 255.0f ? 255.0f : val);
+                    DrawRectangle(0, 0, state->game_width, state->game_height, c);
+                } else if (cutscene_interval(5.5f, 7.2f)) {
+                    player = init_level(state, &level_arena);
+                }
+            } 
         }
+        
         
         //DrawRectangle(5, 5, state->game_width/2-10, 8, BLACK);
         //DrawRectangle(6, 6, state->game_width/2-12, 6, RED);
