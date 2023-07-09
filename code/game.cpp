@@ -10,7 +10,7 @@
 #define sign(value) ((value) < 0 ? -1 : ((value) > 0 ? 1 : 0 ))
 
 bool
-box_collision( Entity* rigidbody, Entity* other, v2* step_velocity, bool resolve) {
+box_collision(Entity* rigidbody, Entity* other, v2* step_velocity, bool resolve) {
     bool found = false;
     
     v2 step_position = rigidbody->p + *step_velocity;
@@ -328,8 +328,8 @@ check_collisions(Game_State* state, Entity* entity, v2* step_velocity) {
             // Some collision exceptions
             if ((entity->type == Player && (other->type == Bullet || other->type == Charged_Bullet)) ||
                 ((entity->type == Bullet || entity->type == Charged_Bullet) &&  other->type == Player) ||
-                (entity->type == Player && other->type == Boss_Dragon) ||
-                (entity->type == Boss_Dragon && other->type == Player) ||
+                //(entity->type == Player && other->type == Boss_Dragon) ||
+                //(entity->type == Boss_Dragon && other->type == Player) ||
                 (entity->is_rigidbody && entity->health <= 0) ||
                 (other->is_rigidbody && other->health <= 0)) {
                 continue;
@@ -400,6 +400,9 @@ main() {
     state->sound_shoot_bullet = LoadSound("assets/shoot_bullet.wav");
     state->sound_explosion = LoadSound("assets/explosion.wav");
     state->sound_hurt = LoadSound("assets/hurt.wav");
+    state->sound_player_hurt = LoadSound("assets/player_hurt.wav");
+    state->sound_fire_breathing = LoadSound("assets/fire_breath.wav");
+    state->sound_charging = LoadSound("assets/charging.wav");
     
     RenderTexture2D render_target = LoadRenderTexture(state->game_width, state->game_height);
     
@@ -603,7 +606,14 @@ main() {
                                 entity->is_attacking = true;
                                 entity->attack_time[j] -= delta_time;
                                 
+                                if (j == 1) {
+                                    if ((int) (entity->attack_time[j] * 80.0f) % 40 == 39) {
+                                        PlaySound(state->sound_charging);
+                                    }
+                                }
+                                
                                 if (j == 1 && entity->attack_time[1] <= 0.0f) {
+                                    PlaySound(state->sound_explosion);
                                     shoot_bullet(state, entity, state->charged_bullet, shoot_upwards);
                                 }
                             }
@@ -651,6 +661,7 @@ main() {
                                         entity->attack_time[1] = 1.5f;
                                         entity->attack_cooldown[0] = 2.0f;
                                         entity->attack_cooldown[1] = 10.0f;
+                                        PlaySound(state->sound_charging);
                                     } else {
                                         
                                         // Find available bullet
@@ -827,6 +838,18 @@ main() {
                         
                     } else if (state->mode == Control_Boss_Enemy) {
                         
+                        
+                        if (entity->collided) {
+                            if (entity->collided_with == state->player) {
+                                if (player->invincibility_frames <= 0) {
+                                    player->invincibility_frames = 30;
+                                    player->health -= 10;
+                                    player->velocity.x = -entity->facing_dir*2.0f;
+                                    PlaySound(state->sound_player_hurt);
+                                }
+                            }
+                        }
+                        
                         entity->is_attacking = false;
                         for (int j = 0; j < array_count(entity->attack_time); j++) {
                             if (entity->attack_time[j] > 0.0f) {
@@ -850,13 +873,14 @@ main() {
                                     entity->attack_time[0] = 2.0f;
                                     entity->attack_cooldown[0] = 5.0f;
                                     entity->is_attacking = true;
+                                    PlaySound(state->sound_fire_breathing);
+                                    
                                 } else if (IsKeyPressed(KEY_E) && entity->attack_cooldown[1] <= 0.0f) {
-                                    //entity->attack_time[1] = 2.0f;
-                                    //entity->attack_cooldown[1] = 5.0f;
-                                    //entity->is_attacking = true;
+                                    entity->attack_time[1] = 2.0f;
+                                    entity->attack_cooldown[1] = 10.0f;
+                                    entity->is_attacking = true;
                                 }
                             }
-                            
                             
                             if (IsKeyPressed(KEY_S)) { 
                                 entity->velocity.y = 1.5f;
@@ -891,7 +915,6 @@ main() {
                     //assert(entity->attack_time[0] == 0.0f);
                     bool fire_breathing =  entity->attack_time[0] > 0.0f;
                     update_particle_system(state->ps_fire, fire_breathing);
-                    
                     
                     if (fire_breathing) {
                         
@@ -930,8 +953,18 @@ main() {
                             if (player->invincibility_frames <= 0) {
                                 player->health -= 40;
                                 player->invincibility_frames = 40;
+                                SetSoundPitch(state->sound_player_hurt, random_f32()*0.3f + 1.0f);
+                                PlaySound(state->sound_player_hurt);
                             }
                         }
+                    }
+                    
+                    
+                    bool is_charging = entity->attack_time[1] > 0.0f;
+                    if (is_charging) {
+                        player->acceleration.x = player->facing_dir*30.0f;
+                    } else {
+                        
                     }
                 } break;
             }
@@ -1053,6 +1086,14 @@ main() {
                               (int) size.x, (int) size.y, entity->color);
             }
             
+#if 0
+            {
+                v2 p = to_pixel(state, entity->p);
+                v2 size = entity->size * state->meters_to_pixels;
+                Rectangle r = { p.x, p.y, size.x, size.y };
+                DrawRectanglePro(r, origin, 0.0f, RED);
+            }
+#endif
             
             switch (entity->type) {
                 case Boss_Dragon: {
