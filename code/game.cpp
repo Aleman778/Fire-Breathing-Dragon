@@ -102,6 +102,7 @@ init_level(Game_State* state, Memory_Arena* arena) {
     
     
 #if BUILD_DEBUG
+    PlayMusicStream(state->music);
     state->mode = Control_Boss_Enemy;
 #else
     state->mode = Intro_Cutscene;
@@ -170,11 +171,12 @@ init_level(Game_State* state, Memory_Arena* arena) {
     boss_enemy->flip_texture = true;
     boss_enemy->texture = &state->texture_dragon;
     boss_enemy->num_frames = 8;
+    boss_enemy->idle_frame = 8;
     boss_enemy->frame_advance_rate = 2.5f;
 #if BUILD_DEBUG
     boss_enemy->p = {3.0f, 10.0f};
 #else 
-    boss_enemy->p = {-5.0f, 10.0f};
+    boss_enemy->p = {-7.0f, 10.0f};
 #endif
     boss_enemy->size = {4.0f, 4.0f};
     boss_enemy->max_speed.x = 2.5f;
@@ -393,10 +395,15 @@ main() {
     state->texture_tiles = LoadTexture("assets/tiles.png");
     state->texture_background = LoadTexture("assets/background.png");
     state->texture_dragon = LoadTexture("assets/dragon.png");
+    state->texture_dragon_wings = LoadTexture("assets/dragon_wings.png");
     state->texture_player = LoadTexture("assets/player.png");
     state->texture_door = LoadTexture("assets/door.png");
     state->texture_bullet = LoadTexture("assets/bullet.png");
     state->texture_charged_bullet = LoadTexture("assets/charged_bullet.png");
+    
+    SetTextureWrap(state->texture_door, TEXTURE_WRAP_REPEAT);
+    SetTextureWrap(state->texture_dragon, TEXTURE_WRAP_REPEAT);
+    SetTextureWrap(state->texture_dragon_wings, TEXTURE_WRAP_REPEAT);
     
     state->sound_shoot_bullet = LoadSound("assets/shoot_bullet.wav");
     state->sound_explosion = LoadSound("assets/explosion.wav");
@@ -406,6 +413,8 @@ main() {
     state->sound_charging = LoadSound("assets/charging.wav");
     state->sound_lose = LoadSound("assets/lose.wav");
     state->sound_win = LoadSound("assets/win.wav");
+    
+    state->music = LoadMusicStream("assets/music.mp3");
     
     state->font = LoadFontEx("assets/doomed.ttf", 42, 0, 0);
     SetTextureFilter(state->font.texture, TEXTURE_FILTER_POINT);
@@ -444,12 +453,20 @@ main() {
     
     while (!WindowShouldClose())
     {
+        if (IsMusicStreamPlaying(state->music)) {
+            UpdateMusicStream(state->music);
+        }
+        
+        if (IsKeyPressed(KEY_P)) {
+            StopMusicStream(state->music);
+            PlayMusicStream(state->music);
+        }
+        
         f32 delta_time = GetFrameTime();
         
         if (IsKeyPressed(KEY_F11)) {
             ToggleFullscreen();
         }
-        
         
         state->screen_width = GetScreenWidth();
         state->screen_height = GetScreenHeight();
@@ -479,6 +496,7 @@ main() {
             state->cutscene_time += delta_time;
             
             if (state->cutscene_time > 8.0f) {
+                PlayMusicStream(state->music);
                 state->mode = Control_Boss_Enemy;
             }
         }
@@ -776,9 +794,9 @@ main() {
                                 }
                             }
                         } else if (entity == state->left_door) {
-                            if (cutscene_interval(6.0f, 6.5f)) {
+                            if (cutscene_interval(6.5f, 7.0f)) {
                                 entity->size.y += delta_time*8.0f;
-                            } else if (cutscene_interval(6.5f, 10.0f)) {
+                            } else if (cutscene_interval(7.0f, 10.0f)) {
                                 entity->size.y = 4.0f;
                                 
                                 if (entity->health == 1) {
@@ -1092,6 +1110,9 @@ main() {
                 Rectangle src = { 0.0f, 0.0f, size.width, size.height };
                 if (entity->num_frames > 0 && entity->is_grounded) {
                     int frame_index = (int) entity->frame_advance;
+                    if (fabsf(entity->velocity.x) < 0.01f) {
+                        frame_index = entity->idle_frame;
+                    }
                     src.x += size.width*frame_index;
                 }
                 
@@ -1137,6 +1158,76 @@ main() {
                         }
                     }
                     BeginBlendMode(BLEND_ALPHA);
+                    
+                    if (entity->invincibility_frames % 2 == 0) {
+                        // Draw tail
+                        v2 wp = entity->p + vec2(0.0f, 2.0f);
+                        if (entity->facing_dir <= 0.0f) {
+                            wp.x += entity->size.x;
+                        }
+                        //if (entity->facing_dir 
+                        //+ entity->size;
+                        Color color = rgb(165, 48, 48);
+                        v2 p = to_pixel(state, wp);
+                        
+                        static f32 angle_mod;
+                        
+                        angle_mod += delta_time;
+                        
+                        f32 angle = angle_mod + PI_F32/4.0f;
+                        int num_joints = 18;
+                        for (int c = 0; c < num_joints; c++) {
+                            f32 decr = 1.0f - (f32) c/num_joints;
+                            f32 radius = fabsf(cosf(c*PI_F32/2.0f))*3.5f*decr + 1.0f;
+                            if (c % 4 == 0) {
+                                DrawLine((int) p.x, (int) (p.y-radius*1.0f)+2, (int) p.x, (int) (p.y-radius*1.0f) -2, ORANGE);
+                            }
+                            DrawCircle((int) p.x, (int) p.y, radius, color);
+                            
+                            
+                            p.x += (radius * 0.8f)*(entity->facing_dir > 0.0f ? -1.0f : 1.0f);
+                            p.y += sinf(angle)*(radius * 0.8f)*0.5f;
+                            angle += PI_F32/8.0f;
+                        }
+                    }
+                    
+                    
+                    {
+                        // Draw wings
+                        v2 p = to_pixel(state, entity->p) - vec2(32.0f, 32.0f);
+                        v2 size = vec2(128.0f, 128.0f);
+                        
+                        bool facing_right = entity->facing_dir > 0.0f;
+                        if (entity->flip_texture) {
+                            facing_right = !facing_right;
+                        }
+                        
+                        
+                        static f32 wings_frame;
+                        if (entity->velocity.y < 0.0f) {
+                            wings_frame += delta_time*15.0f;
+                        } else {
+                            wings_frame = 0.0f;
+                        }
+                        
+                        
+                        Rectangle src = { 0.0f, 0.0f, size.width, size.height };
+                        int frame_index =  ((int) wings_frame) % 8;
+                        //if (fabsf(entity->velocity.x) < 0.01f) {
+                        //frame_index = entity->idle_frame;
+                        //}
+                        src.x += size.width*frame_index;
+                        
+                        Rectangle dest = { p.x, p.y, size.width, size.height };
+                        if (facing_right) {
+                            src.width = -src.width;
+                        }
+                        
+                        if (entity->invincibility_frames % 2 == 0) {
+                            DrawTexturePro(state->texture_dragon_wings, src, dest, origin, entity->sprite_rot, WHITE);
+                        }
+                        
+                    }
                     
 #if BUILD_DEBUG && 0
                     Ray ray;

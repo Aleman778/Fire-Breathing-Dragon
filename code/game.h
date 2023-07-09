@@ -142,6 +142,7 @@ struct Entity {
     Color color;
     
     int num_frames;
+    int idle_frame;
     f32 frame_advance_rate;
     f32 frame_advance;
     
@@ -224,6 +225,7 @@ struct Game_State {
     Texture2D texture_background;
     Texture2D texture_player;
     Texture2D texture_dragon;
+    Texture2D texture_dragon_wings;
     Texture2D texture_door;
     Texture2D texture_bullet;
     Texture2D texture_charged_bullet;
@@ -236,6 +238,8 @@ struct Game_State {
     Sound sound_charging;
     Sound sound_lose;
     Sound sound_win;
+    
+    Music music;
     
     Font font;
 };
