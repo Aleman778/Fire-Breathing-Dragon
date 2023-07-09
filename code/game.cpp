@@ -100,8 +100,13 @@ init_level(Game_State* state, Memory_Arena* arena) {
     
     state->entity_count = 0;
     
+    
+#if BUILD_DEBUG
+    state->mode = Control_Boss_Enemy;
+#else
     state->mode = Intro_Cutscene;
     state->cutscene_time = 0.0f;
+#endif
     
     Loaded_Tmx tmx = read_tmx_map_data(string_lit("assets/interior.tmx"), arena);
     state->entities = tmx.entities;
@@ -113,7 +118,11 @@ init_level(Game_State* state, Memory_Arena* arena) {
     Entity* player = spawn_entity(state, arena, Player);
     state->player = player;
     player->texture = &state->texture_player;
+#if BUILD_DEBUG
+    player->p = {16.0f, 12.0f};
+#else 
     player->p = {24.0f, 12.0f};
+#endif
     player->size = {1.0f, 2.0f};
     player->max_speed.x = 3.0f;
     player->is_rigidbody = true;
@@ -128,7 +137,11 @@ init_level(Game_State* state, Memory_Arena* arena) {
     boss_enemy->texture = &state->texture_dragon;
     boss_enemy->num_frames = 8;
     boss_enemy->frame_advance_rate = 2.5f;
+#if BUILD_DEBUG
+    boss_enemy->p = {3.0f, 10.0f};
+#else 
     boss_enemy->p = {-5.0f, 10.0f};
+#endif
     boss_enemy->size = {4.0f, 4.0f};
     boss_enemy->max_speed.x = 2.5f;
     boss_enemy->is_rigidbody = true;
@@ -308,7 +321,9 @@ check_collisions(Game_State* state, Entity* entity, v2* step_velocity) {
     
     for (int j = 0; j < state->entity_count; j++) {
         Entity* other = &state->entities[j];
-        if ((other != entity && other->is_rigidbody) || other->type == Box_Collider) {
+        if ((other != entity && other->is_rigidbody) || 
+            other->type == Box_Collider ||
+            other->type == Door) {
             
             // Some collision exceptions
             if ((entity->type == Player && (other->type == Bullet || other->type == Charged_Bullet)) ||
@@ -866,7 +881,10 @@ main() {
                         
                         Ray ray;
                         ray.position = { rpos.x, rpos.y, 0.0f };
-                        ray.direction = { entity->facing_dir, 1.0f, 0.0f };
+                        
+                        v2 dir = { entity->facing_dir, 1.0f };
+                        dir = normalize(dir);
+                        ray.direction = { dir.x, dir.y, 0.0f };
                         
                         f32 t = (2.0f - entity->attack_time[0]) * 2.0f;
                         if (t >= 1.0f) t = 1.0f;
@@ -875,10 +893,15 @@ main() {
                         
                         bool collision = ray_box_collision(ray, min_d, max_d, player_box);
                         
-                        ray.direction = { entity->facing_dir, 1.6f, 0.0f };
+                        dir = { entity->facing_dir, 1.6f };
+                        dir = normalize(dir);
+                        ray.direction = { dir.x, dir.y, 0.0f };
+                        
                         collision = collision || ray_box_collision(ray, min_d, max_d, player_box);
                         
-                        ray.direction = { entity->facing_dir, 0.6f, 0.0f };
+                        dir = { entity->facing_dir, 0.6f };
+                        dir = normalize(dir);
+                        ray.direction = { dir.x, dir.y, 0.0f };
                         collision = collision || ray_box_collision(ray, min_d, max_d, player_box);
                         
                         if (collision) {
@@ -1031,13 +1054,20 @@ main() {
                     Ray ray;
                     v2 rpos = to_pixel(state, state->ps_fire->start_p);
                     ray.position = { rpos.x, rpos.y, 0.0f };
-                    ray.direction = { entity->facing_dir, 1.0f, 0.0f };
+                    
+                    v2 dir = { entity->facing_dir, 1.0f };
+                    dir = normalize(dir);
+                    ray.direction = { dir.x, dir.y, 0.0f };
                     DrawRay(ray, PURPLE);
                     
-                    ray.direction = { entity->facing_dir, 1.6f, 0.0f };
+                    dir = { entity->facing_dir, 1.6f };
+                    dir = normalize(dir);
+                    ray.direction = { dir.x, dir.y, 0.0f };
                     DrawRay(ray, PURPLE);
                     
-                    ray.direction = { entity->facing_dir, 0.6f, 0.0f };
+                    dir = { entity->facing_dir, 0.6f };
+                    dir = normalize(dir);
+                    ray.direction = { dir.x, dir.y, 0.0f };
                     DrawRay(ray, PURPLE);
 #endif
                     
