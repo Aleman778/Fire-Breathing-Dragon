@@ -115,6 +115,40 @@ init_level(Game_State* state, Memory_Arena* arena) {
     state->tile_map_width = tmx.tile_map_width;
     state->tile_map_height = tmx.tile_map_height;
     
+    for (int i = 0; i < array_count(state->bullets); i++) {
+        Entity* bullet = spawn_entity(state, arena, Bullet);
+        state->bullets[i] = bullet;
+        bullet->texture = &state->texture_bullet;
+        bullet->max_speed.x = 3.0f;
+        bullet->size = { 0.5f, 0.5f };
+        bullet->is_rigidbody = true;
+    }
+    
+    Entity* bullet = spawn_entity(state, arena, Charged_Bullet);
+    state->charged_bullet = bullet;
+    bullet->texture = &state->texture_charged_bullet;
+    bullet->max_speed.x = 3.0f;
+    bullet->size = { 0.75f, 0.75f };
+    bullet->is_rigidbody = true;
+    
+    
+    Entity* left_door = spawn_entity(state, arena, Door);
+    state->left_door = left_door;
+    left_door->texture = &state->texture_door;
+    left_door->health = 1;
+    left_door->p = { 0.0f, 10.0f };
+    left_door->size = { 1.0f, 0.0f };
+    left_door->is_rigidbody = false;
+    
+    Entity* right_door = spawn_entity(state, arena, Door);
+    state->right_door = right_door;
+    right_door->texture = &state->texture_door;
+    right_door->health = 1;
+    right_door->p = { 21.0f, 10.0f };
+    right_door->size = { 1.0f, 0.0f };
+    right_door->is_rigidbody = false;
+    
+    
     Entity* player = spawn_entity(state, arena, Player);
     state->player = player;
     player->texture = &state->texture_player;
@@ -148,39 +182,6 @@ init_level(Game_State* state, Memory_Arena* arena) {
     boss_enemy->color = RED;
     boss_enemy->max_health = 1000;
     boss_enemy->health = boss_enemy->max_health;
-    
-    for (int i = 0; i < array_count(state->bullets); i++) {
-        Entity* bullet = spawn_entity(state, arena, Bullet);
-        state->bullets[i] = bullet;
-        bullet->texture = &state->texture_bullet;
-        bullet->max_speed.x = 3.0f;
-        bullet->size = { 0.5f, 0.5f };
-        bullet->is_rigidbody = true;
-    }
-    
-    Entity* bullet = spawn_entity(state, arena, Charged_Bullet);
-    state->charged_bullet = bullet;
-    bullet->texture = &state->texture_charged_bullet;
-    bullet->max_speed.x = 3.0f;
-    bullet->size = { 0.75f, 0.75f };
-    bullet->is_rigidbody = true;
-    
-    
-    Entity* left_door = spawn_entity(state, arena, Door);
-    state->left_door = left_door;
-    left_door->texture = &state->texture_door;
-    left_door->health = 1;
-    left_door->p = { 0.0f, 10.0f };
-    left_door->size = { 1.0f, 0.0f };
-    left_door->is_rigidbody = false;
-    
-    Entity* right_door = spawn_entity(state, arena, Door);
-    state->right_door = right_door;
-    right_door->texture = &state->texture_door;
-    right_door->health = 1;
-    right_door->p = { 21.0f, 10.0f };
-    right_door->size = { 1.0f, 0.0f };
-    right_door->is_rigidbody = false;
     
     return player;
 }
@@ -559,6 +560,10 @@ main() {
                             go_to_attack = true;
                         }
                         
+                        if (go_to_attack) {
+                            entity->is_cornered = false;
+                        }
+                        
                         bool shoot_upwards = false;
                         if (go_to_attack) {
                             attack = accuracy > 0.0f;
@@ -591,12 +596,14 @@ main() {
                         } else {
                             // Move away from danger
                             // TODO: better corner handling
-                            //if (entity->p.x < 3.0f || entity->p.x > 18.0f) {
-                            // Avoid getting cornered
-                            //move_x = -1.0f*sign(dist.x);
-                            //} else {
-                            move_x = 1.0f*sign(dist.x);
-                            //}
+                            if (entity->p.x < 3.0f || entity->p.x > 19.0f || entity->is_cornered) {
+                                // Avoid getting cornered (move to center of screen 
+                                entity->is_cornered = true;
+                                f32 escape_x = entity->p.x - 11.0f;
+                                move_x = -1.0f*sign(escape_x);
+                            } else {
+                                move_x = 1.0f*sign(dist.x);
+                            }
                         }
                         
                         
@@ -607,14 +614,19 @@ main() {
                                 entity->attack_time[j] -= delta_time;
                                 
                                 if (j == 1) {
-                                    if ((int) (entity->attack_time[j] * 80.0f) % 40 == 39) {
-                                        PlaySound(state->sound_charging);
+                                    if (entity->invincibility_frames <= 0) {
+                                        if ((int) (entity->attack_time[j] * 80.0f) % 40 == 39) {
+                                            PlaySound(state->sound_charging);
+                                        }
+                                    } else {
+                                        entity->attack_time[j] = 0.0f;
+                                        continue;
                                     }
                                 }
                                 
                                 if (j == 1 && entity->attack_time[1] <= 0.0f) {
                                     PlaySound(state->sound_explosion);
-                                    shoot_bullet(state, entity, state->charged_bullet, shoot_upwards);
+                                    shoot_bullet(state, entity, state->charged_bullet, fabsf(dist.y) > 3.0f);
                                 }
                             }
                             
@@ -633,7 +645,7 @@ main() {
                         
                         bool is_charging =  entity->attack_time[1] > 0.0f;
                         if (is_charging) {
-                            state->ps_charging->start_p = entity->p + 
+                            state->ps_charging->start_p = entity->p +
                                 vec2(entity->facing_dir > 0.0f ? 1.0f : 0.0f, 1.0f);
                         }
                         update_particle_system(state->ps_charging, is_charging);
@@ -658,9 +670,9 @@ main() {
                                         entity->attack_cooldown[1] <= 0.0f) {
                                         
                                         entity->is_attacking = true;
-                                        entity->attack_time[1] = 1.5f;
+                                        entity->attack_time[1] = random_f32()*0.6f + 0.5f;
                                         entity->attack_cooldown[0] = 2.0f;
-                                        entity->attack_cooldown[1] = 10.0f;
+                                        entity->attack_cooldown[1] = 3.0f;
                                         PlaySound(state->sound_charging);
                                     } else {
                                         
@@ -870,15 +882,16 @@ main() {
                             if (entity->invincibility_frames <= 0) {
                                 // Initiate a new attack
                                 if (IsKeyPressed(KEY_F) && entity->attack_cooldown[0] <= 0.0f) {
-                                    entity->attack_time[0] = 2.0f;
+                                    entity->attack_time[0] = 2.5f;
                                     entity->attack_cooldown[0] = 5.0f;
                                     entity->is_attacking = true;
                                     PlaySound(state->sound_fire_breathing);
                                     
                                 } else if (IsKeyPressed(KEY_E) && entity->attack_cooldown[1] <= 0.0f) {
-                                    entity->attack_time[1] = 2.0f;
-                                    entity->attack_cooldown[1] = 10.0f;
-                                    entity->is_attacking = true;
+                                    //entity->attack_time[1] = 2.0f;
+                                    //entity->attack_cooldown[1] = 10.0f;
+                                    //entity->is_attacking = true;
+                                    
                                 }
                             }
                             
@@ -913,8 +926,8 @@ main() {
                     
                     // Fire breathing attack
                     //assert(entity->attack_time[0] == 0.0f);
-                    bool fire_breathing =  entity->attack_time[0] > 0.0f;
-                    update_particle_system(state->ps_fire, fire_breathing);
+                    bool fire_breathing = entity->attack_time[0] > 0.0f;
+                    update_particle_system(state->ps_fire, entity->attack_time[0] > 0.5f);
                     
                     if (fire_breathing) {
                         
@@ -934,7 +947,8 @@ main() {
                         f32 t = (2.0f - entity->attack_time[0]) * 2.0f;
                         if (t >= 1.0f) t = 1.0f;
                         f32 min_d = 0.0f;
-                        f32 max_d = t*4.0f;
+                        f32 max_d = t*5.0f;
+                        pln("%f", max_d);
                         
                         bool collision = ray_box_collision(ray, min_d, max_d, player_box);
                         
@@ -984,6 +998,10 @@ main() {
                 
                 if (entity->num_frames > 0) {
                     entity->frame_advance += step_velocity.x * entity->frame_advance_rate;
+                    if (fabsf(step_velocity.x) <= 0.01f) {
+                        entity->frame_advance = 0.0f;
+                    }
+                    
                     if (entity->frame_advance > entity->num_frames) {
                         entity->frame_advance -= entity->num_frames;
                     }
@@ -1214,9 +1232,11 @@ main() {
                     dest.x = dest.x + (dest.width / 2.0f) * (1.0f - swap);
                     dest.width = dest.width * swap;
                     
-                    if (!cutscene_interval(7.25f, 8.0f)) {
-                        src.width = -src.width;
-                    }
+                }
+                
+                
+                if (cutscene_interval(0.0f, 7.25f)) {
+                    src.width = -src.width;
                 }
             }
             DrawTexturePro(render_texture, src, dest, origin, 0, WHITE);

@@ -157,8 +157,7 @@ struct Entity {
     bool is_jumping;
     bool is_attacking;
     bool is_rigidbody;
-    
-    bool ai_offensive;
+    bool is_cornered;
     
     u32 pad;
 };
