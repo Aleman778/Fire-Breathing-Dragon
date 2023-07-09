@@ -1,5 +1,5 @@
 # Fire Breathing Dragon
-![Screenshot](https://raw.githubusercontent.com/Aleman778/Fire-Breathing-Dragon/main/screenshot.png)
+![Screenshot](https://raw.githubusercontent.com/Aleman778/Fire-Breathing-Dragon/main/screenshot.png?token=GHSAT0AAAAAAB5JL4KA7Z3BLPPY4CUKC7AQZFLBOIQ)
 
 My entry for the GMTK Game Jam 2023. 
 The theme for this jam is **Roles Reversed** which means you will be playing a role that you normally don't play.
