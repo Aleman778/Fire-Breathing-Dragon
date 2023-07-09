@@ -457,18 +457,38 @@ main() {
                         v2 dist = ((entity->p + entity->size/2.0f) -
                                    (target->p + target->size/2.0f));
                         
-                        
-                        bool attack = true;
+                        bool attack = false;
                         bool jump = false;
                         f32 move_x = 0.0f;
                         
                         f32 accuracy = 2.0f - min(fabsf(dist.x), fabsf(dist.y));
-                        attack = accuracy > 0.0f;
                         
+                        // no accuracy if looking the other way
+                        if (fabsf(dist.y) < 2.0f) {
+                            if ((int) entity->facing_dir == sign(dist.x)) {
+                                accuracy = -1.0f;
+                            }
+                        }
+                        pln("accuracy = %f", accuracy);
                         //pln("%f, %f", dist.x, dist.y);
                         
                         
-                        if (player->invincibility_frames <= 0) {
+                        bool go_to_attack = true;
+                        if (player->invincibility_frames > 0 || state->boss_enemy->is_attacking) {
+                            go_to_attack = false;
+                            
+                            if (state->boss_enemy->is_attacking && sign(dist.x) != (int) state->boss_enemy->facing_dir) {
+                                go_to_attack = true;
+                            }
+                        }
+                        
+                        // if safe distance away attack
+                        //if (fabsf(dist.x) > 5.0f) {
+                        //go_to_attack = true;
+                        //}
+                        
+                        if (go_to_attack) {
+                            attack = accuracy > 0.0f;
                             
                             if (fabsf(dist.y) > 7.0f) {
                                 if (fabsf(dist.x) > 0.5f) {
@@ -490,8 +510,16 @@ main() {
                                 }
                             }
                         } else {
+                            // Move away from danger
+                            // TODO: better corner handling
+                            //if (entity->p.x < 3.0f || entity->p.x > 18.0f) {
+                            // Avoid getting cornered
+                            //move_x = -1.0f*sign(dist.x);
+                            //} else {
                             move_x = 1.0f*sign(dist.x);
+                            //}
                         }
+                        
                         
                         entity->is_attacking = false;
                         for (int j = 0; j < array_count(entity->attack_time); j++) {
@@ -534,7 +562,8 @@ main() {
                                     entity->is_attacking = true;
                                     
                                     // Try use a charged bullet if there is a good chance
-                                    if (state->boss_enemy->is_attacking &&
+                                    if (accuracy > 0.5f &&
+                                        state->boss_enemy->is_attacking &&
                                         state->charged_bullet->health <= 0 &&
                                         entity->is_grounded &&
                                         entity->attack_cooldown[1] <= 0.0f) {
@@ -699,7 +728,7 @@ main() {
                                 // Initiate a new attack
                                 if (IsKeyPressed(KEY_F) && entity->attack_cooldown[0] <= 0.0f) {
                                     entity->attack_time[0] = 2.0f;
-                                    entity->attack_cooldown[0] = 0.0f;
+                                    entity->attack_cooldown[0] = 5.0f;
                                     entity->is_attacking = true;
                                 } else {
                                     // more attacks
@@ -708,7 +737,7 @@ main() {
                             
                             
                             if (IsKeyPressed(KEY_S)) { 
-                                entity->velocity.y = 2.0f;
+                                entity->velocity.y = 1.5f;
                             }
                             if (IsKeyDown(KEY_S)) {
                                 entity->acceleration.y *= 2.0f;
