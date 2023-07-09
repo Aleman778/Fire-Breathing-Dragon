@@ -353,7 +353,7 @@ shoot_bullet(Game_State* state, Entity* entity, Entity* bullet, bool upward) {
     
     PlaySound(state->sound_shoot_bullet);
     
-    bullet->health = 100;
+    bullet->health = bullet->type == Charged_Bullet ? 100 : 30;
     bullet->p = entity->p + vec2((upward && entity->facing_dir == 1.0f) ? 1.3f : 0.0f, 0.75f);
     
     if (upward) {
@@ -518,7 +518,7 @@ main() {
                         Entity* target = state->boss_enemy;
                         
                         v2 dist = ((entity->p + entity->size/2.0f) -
-                                   (target->p + target->size/2.0f));
+                                   (target->p + (target->size/2.0f)*vec2(target->facing_dir, 1.0f)));
                         
                         bool attack = false;
                         bool jump = false;
@@ -623,9 +623,11 @@ main() {
                                     entity->attack_cooldown[0] = 0.5f;
                                     entity->is_attacking = true;
                                     
+                                    f32 far_dist = max(fabsf(dist.x), fabsf(dist.y));
+                                    
                                     // Try use a charged bullet if there is a good chance
                                     if (accuracy > 0.5f &&
-                                        state->boss_enemy->is_attacking &&
+                                        (state->boss_enemy->is_attacking || far_dist > 5.0f) &&
                                         state->charged_bullet->health <= 0 &&
                                         entity->is_grounded &&
                                         entity->attack_cooldown[1] <= 0.0f) {
@@ -642,6 +644,7 @@ main() {
                                             if (bullet->health <= 0) {
                                                 entity->is_attacking = true;
                                                 shoot_bullet(state, entity, bullet, dist.y > 7.0f);
+                                                entity->attack_cooldown[0] = random_f32()*2.0f;
                                                 break;
                                             }
                                         }
@@ -748,10 +751,12 @@ main() {
                 case Charged_Bullet: {
                     entity->velocity.x = 0.0f;
                     entity->velocity.y = 0.0f;
+                    
+                    f32 bullet_speed = entity->type == Charged_Bullet ? 20.0f : 12.0f;
                     if (entity->facing_dir == 0.0f) {
-                        entity->velocity.y = -20.0f;
+                        entity->velocity.y = -bullet_speed;
                     } else {
-                        entity->velocity.x = 20.0f*entity->facing_dir;
+                        entity->velocity.x = bullet_speed*entity->facing_dir;
                     }
                     if (entity->collided) {
                         entity->health = 0;
